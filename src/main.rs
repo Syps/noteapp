@@ -1,3 +1,5 @@
+mod tree;
+
 use std::env;
 use std::fs::create_dir_all;
 use std::io::Result;
