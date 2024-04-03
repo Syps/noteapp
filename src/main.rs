@@ -4,17 +4,25 @@ use std::env;
 use std::fs::create_dir_all;
 use std::io::Result;
 use std::path::{Path, PathBuf};
-use std::process::exit;
+
 use std::process::Command;
 
 use chrono;
+use tree::{dir_walk, Directory};
 
 struct Config {
     root_path: String,
 }
 
-fn main() {
-    let config = build_config();
+fn main() -> Result<()> {
+    let args: Vec<String> = env::args().collect();
+    let config = build_config()?;
+
+    if args.len() > 1 && &args[1] == "list" {
+        display_note_tree(&config.root_path);
+        return Ok(());
+    }
+
     let file_path = build_note_file_path(config);
 
     match file_path.parent() {
@@ -25,6 +33,19 @@ fn main() {
         None => {}
     }
     run_and_wait_for_vim(file_path);
+    Ok(())
+}
+
+fn display_note_tree(root: &str) -> Result<()> {
+    let directory: Directory = dir_walk(
+        &PathBuf::from(root),
+        tree::is_not_hidden_name,
+        tree::sort_by_name,
+    )?;
+
+    tree::print_tree(root, &directory);
+
+    Ok(())
 }
 
 fn make_dirs_recursive(file_path: &PathBuf) -> Result<()> {
@@ -32,17 +53,17 @@ fn make_dirs_recursive(file_path: &PathBuf) -> Result<()> {
     Ok(())
 }
 
-fn build_config() -> Config {
+fn build_config() -> Result<Config> {
     let home_var_set = env::var("NOTEHOME");
 
     if home_var_set.is_err() {
-        eprintln!("NOTEHOME must be set.");
-        exit(1);
+        eprintln!();
+        panic!("NOTEHOME must be set.");
     }
 
-    return Config {
+    Ok(Config {
         root_path: home_var_set.unwrap().to_string(),
-    };
+    })
 }
 
 fn build_note_file_path(config: Config) -> PathBuf {
